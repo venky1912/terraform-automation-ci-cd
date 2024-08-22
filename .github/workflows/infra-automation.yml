@@ -1,0 +1,83 @@
+name: Terraform CI/CD Workflow
+
+on:
+  pull_request:
+    branches:
+      - development
+      - staging
+      - production
+  push:
+    branches:
+      - development
+      - staging
+      - production
+
+jobs:
+  terraform:
+    name: Terraform Workspace setup deploy in multiple Env 
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Authenticate to GitHub Modules Repo
+      run: |
+        git config --global url."https://${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.1.6
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-west-2
+
+
+    - name: Initialize Terraform (Dev)
+      if: github.ref == 'refs/heads/development'
+      run: terraform init \
+        -backend-config="bucket=devopstrainee-terraform-bucket" \
+        -backend-config="key=terraform/development/terraform.tfstate" \
+        -backend-config="region=eu-west-2"
+
+    - name: Initialize Terraform (Staging)
+      if: github.ref == 'refs/heads/staging'
+      run: terraform init \
+        -backend-config="bucket=devopstrainee-terraform-bucket" \
+        -backend-config="key=terraform/staging/terraform.tfstate" \
+        -backend-config="region=eu-west-2"
+
+    - name: Initialize Terraform (Production)
+      if: github.ref == 'refs/heads/production'
+      run: terraform init \
+        -backend-config="bucket=devopstrainee-terraform-bucket" \
+        -backend-config="key=terraform/production/terraform.tfstate" \
+        -backend-config="region=eu-west-2"
+
+    - name: Select Terraform Workspace
+      id: workspace
+      run: terraform workspace select ${{ github.ref_name }} || terraform workspace new ${{ github.ref_name }}
+
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate
+
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan -out=tfplan -input=false
+
+    - name: Comment Plan on PR
+      if: github.event_name == 'pull_request'
+      run: |
+        terraform show -no-color tfplan > plan.txt
+        gh pr comment ${{ github.event.pull_request.number }} -F plan.txt
+
+    - name: Apply Changes on PR Merge
+      id: apply
+      if: github.event.pull_request.merged == true
+      run: terraform apply -input=false tfplan
