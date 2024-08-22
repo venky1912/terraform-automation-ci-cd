@@ -1,8 +1,6 @@
-resource "aws_s3_bucket" "test_bucket" {
-  bucket = "test-bucket-${terraform.workspace}"
-  object_lock_enabled = true
-  tags = {
-    Name        = "My test bucket"
-    Environment = "Dev"
-  }
+module "new_vpc" {
+  source = "git::https://github.com/venky1912/terraform-modules.git//aws/modules/vpc"
+  name = "test-vpc"
+  cidr = var.vpc_cidr
+  azs  = ["eu-west-2a", "eu-west-2b", "eu-west-2c"]
 }
