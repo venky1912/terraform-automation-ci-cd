@@ -1,5 +1,4 @@
 # Ignore Terraform files
-*.tf
 
 # Local .terraform directories
 **/.terraform/*
