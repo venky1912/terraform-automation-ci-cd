@@ -38,25 +38,11 @@ jobs:
         aws-region: eu-west-2
 
 
-    - name: Initialize Terraform (Dev)
-      if: github.ref == 'refs/heads/development'
-      run: terraform init \
+    - name: Initialize Terraform with Dynamic Backend Config
+      run: |
+        terraform init \
         -backend-config="bucket=devopstrainee-terraform-bucket" \
-        -backend-config="key=terraform/development/terraform.tfstate" \
-        -backend-config="region=eu-west-2"
-
-    - name: Initialize Terraform (Staging)
-      if: github.ref == 'refs/heads/staging'
-      run: terraform init \
-        -backend-config="bucket=devopstrainee-terraform-bucket" \
-        -backend-config="key=terraform/staging/terraform.tfstate" \
-        -backend-config="region=eu-west-2"
-
-    - name: Initialize Terraform (Production)
-      if: github.ref == 'refs/heads/production'
-      run: terraform init \
-        -backend-config="bucket=devopstrainee-terraform-bucket" \
-        -backend-config="key=terraform/production/terraform.tfstate" \
+        -backend-config="key=terraform/${{ github.ref_name }}/terraform.tfstate" \
         -backend-config="region=eu-west-2"
 
     - name: Select Terraform Workspace
